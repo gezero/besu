@@ -104,7 +104,8 @@ public class MergeCoordinatorTest implements MergeGenesisConfigHelper {
             mockProtocolSchedule,
             mockSorter,
             new MiningParameters.Builder().coinbase(coinbase).build(),
-            backwardsSyncContext);
+            backwardsSyncContext,
+            mock(FullSyncChainFactory.class));
   }
 
   @Test
@@ -394,7 +395,8 @@ public class MergeCoordinatorTest implements MergeGenesisConfigHelper {
             mockProtocolSchedule,
             mockSorter,
             new MiningParameters.Builder().coinbase(coinbase).build(),
-            mock(BackwardsSyncContext.class));
+            mock(BackwardsSyncContext.class),
+            mock(FullSyncChainFactory.class));
 
     var blockZero = mockHeaderBuilder.number(0L).buildHeader();
     var blockOne = mockHeaderBuilder.number(1L).parentHash(blockZero.getHash()).buildHeader();
@@ -510,7 +512,8 @@ public class MergeCoordinatorTest implements MergeGenesisConfigHelper {
                 mockProtocolSchedule,
                 mockSorter,
                 new MiningParameters.Builder().coinbase(coinbase).build(),
-                mock(BackwardsSyncContext.class)));
+                mock(BackwardsSyncContext.class),
+                mock(FullSyncChainFactory.class)));
 
     return mockCoordinator;
   }

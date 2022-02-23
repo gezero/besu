@@ -15,6 +15,9 @@
 package org.hyperledger.besu.consensus.merge.blockcreation;
 
 import static org.hyperledger.besu.consensus.merge.TransitionUtils.isTerminalProofOfWorkBlock;
+import static org.hyperledger.besu.consensus.merge.blockcreation.IN_SYNC.BACKWARD;
+import static org.hyperledger.besu.consensus.merge.blockcreation.IN_SYNC.FULL_SYNC;
+import static org.hyperledger.besu.consensus.merge.blockcreation.IN_SYNC.NONE;
 import static org.hyperledger.besu.util.Slf4jLambdaHelper.debugLambda;
 
 import org.hyperledger.besu.consensus.merge.MergeContext;
@@ -31,7 +34,10 @@ import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.hyperledger.besu.ethereum.core.Difficulty;
 import org.hyperledger.besu.ethereum.core.MiningParameters;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.hyperledger.besu.ethereum.eth.sync.ChainDownloader;
 import org.hyperledger.besu.ethereum.eth.sync.backwardsync.BackwardsSyncContext;
+import org.hyperledger.besu.ethereum.eth.sync.fullsync.FlexibleBlockHashTerminalCondition;
+import org.hyperledger.besu.ethereum.eth.sync.fullsync.SyncTerminationCondition;
 import org.hyperledger.besu.ethereum.eth.transactions.sorter.AbstractPendingTransactionsSorter;
 import org.hyperledger.besu.ethereum.mainnet.AbstractGasLimitSpecification;
 import org.hyperledger.besu.ethereum.mainnet.HeaderValidationMode;
@@ -40,18 +46,22 @@ import org.hyperledger.besu.ethereum.mainnet.ProtocolSchedule;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MergeCoordinator implements MergeMiningCoordinator {
   private static final Logger LOG = LoggerFactory.getLogger(MergeCoordinator.class);
+  private static final long FULL_SYNC_THRESHOLD = 5000L;
 
   final AtomicLong targetGasLimit;
   final MiningParameters miningParameters;
@@ -60,19 +70,27 @@ public class MergeCoordinator implements MergeMiningCoordinator {
   private final MergeContext mergeContext;
   private final ProtocolContext protocolContext;
   private final BackwardsSyncContext backwardsSyncContext;
+  private final FullSyncChainFactory fullSyncChainFactory;
+  Queue<Block> followupBlocks = new ConcurrentLinkedQueue<>();
+
   private final ProtocolSchedule protocolSchedule;
+  private IN_SYNC syncing = NONE;
+  private FlexibleBlockHashTerminalCondition terminalCondition;
+  private CompletableFuture<Void> syncFuture;
 
   public MergeCoordinator(
       final ProtocolContext protocolContext,
       final ProtocolSchedule protocolSchedule,
       final AbstractPendingTransactionsSorter pendingTransactions,
       final MiningParameters miningParams,
-      final BackwardsSyncContext backwardsSyncContext) {
+      final BackwardsSyncContext backwardsSyncContext,
+      final FullSyncChainFactory fullSyncChainFactory) {
     this.protocolContext = protocolContext;
     this.protocolSchedule = protocolSchedule;
     this.mergeContext = protocolContext.getConsensusContext(MergeContext.class);
     this.miningParameters = miningParams;
     this.backwardsSyncContext = backwardsSyncContext;
+    this.fullSyncChainFactory = fullSyncChainFactory;
     this.targetGasLimit =
         miningParameters
             .getTargetGasLimit()
@@ -214,7 +232,7 @@ public class MergeCoordinator implements MergeMiningCoordinator {
       debugLambda(LOG, "BlockHeader {} is already present", () -> optHeader.get().toLogString());
     } else {
       debugLambda(LOG, "appending block hash {} to backward sync", () -> blockhash.toHexString());
-      backwardsSyncContext.syncBackwardsUntil(blockhash);
+      this.syncFuture = syncTillBlockHash(blockhash);
     }
     return optHeader;
   }
@@ -223,12 +241,14 @@ public class MergeCoordinator implements MergeMiningCoordinator {
   public Result executeBlock(final Block block) {
 
     final var chain = protocolContext.getBlockchain();
+
     chain
         .getBlockHeader(block.getHeader().getParentHash())
         .ifPresentOrElse(
             blockHeader ->
                 debugLambda(LOG, "Parent of block {} is already present", block::toLogString),
-            () -> backwardsSyncContext.syncBackwardsUntil(block));
+            () -> this.syncFuture = syncTillBlock(protocolContext, block));
+    // () -> backwardsSyncContext.syncBackwardsUntil(block));
 
     final var validationResult =
         protocolSchedule
@@ -249,6 +269,48 @@ public class MergeCoordinator implements MergeMiningCoordinator {
                 .addBadBlock(block));
 
     return validationResult;
+  }
+
+  private CompletableFuture<Void> syncTillBlockHash(final Hash blockhash) {
+    switch (this.syncing) {
+      case BACKWARD:
+      case NONE:
+        return backwardsSyncContext.syncBackwardsUntil(blockhash);
+      case FULL_SYNC:
+        this.terminalCondition.setBlockHash(blockhash);
+        return syncFuture;
+    }
+    return null;
+  }
+
+  @NotNull
+  private CompletableFuture<Void> syncTillBlock(
+      final ProtocolContext protocolContext, final Block block) {
+    final long currentHeight = protocolContext.getBlockchain().getChainHead().getHeight();
+
+    switch (this.syncing) {
+      case BACKWARD:
+        return backwardsSyncContext.syncBackwardsUntil(block.getHash());
+      case FULL_SYNC:
+        this.terminalCondition.setBlockHash(
+            block.getHash()); // todo: what if we are on a wrong fork, this should be only finalized
+        // block
+        return syncFuture;
+      case NONE:
+        if (block.getHeader().getNumber() - currentHeight > FULL_SYNC_THRESHOLD) {
+          this.syncing = FULL_SYNC;
+          this.terminalCondition =
+              SyncTerminationCondition.blockHash(block.getHash(), protocolContext.getBlockchain());
+          final ChainDownloader downloader = fullSyncChainFactory.until(terminalCondition);
+          followupBlocks = new ConcurrentLinkedQueue<>();
+          followupBlocks.add(block);
+          return downloader.start().whenComplete((unused, throwable) -> this.syncing = NONE);
+        } else {
+          this.syncing = BACKWARD;
+          return backwardsSyncContext.syncBackwardsUntil(block);
+        }
+    }
+    return syncFuture;
   }
 
   @Override
