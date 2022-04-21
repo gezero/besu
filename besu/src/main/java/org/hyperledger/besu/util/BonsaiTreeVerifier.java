@@ -57,7 +57,7 @@ public class BonsaiTreeVerifier {
         System.out.println("We are veryfying : "+dataDir);
         final StorageProvider provider = createKeyValueStorageProvider(dataDir, dataDir.resolve("database"));
         BonsaiTraversal tr = new BonsaiTraversal(provider);
-
+        System.out.println();
         System.out.println("ޏ₍ ὸ.ό₎ރ");
         System.out.println("\uD83E\uDD1E\uD83E\uDD1E\uD83E\uDD1E\uD83E\uDD1E\uD83E\uDD1E\uD83E\uDD1E\uD83E\uDD1E");
 
@@ -124,6 +124,7 @@ class BonsaiTraversal {
             throw new RuntimeException("We have been here already!!!");
         }
         visited.add(parentNode.getHash());
+        printVisited();
         final List<Node<Bytes>> nodes = TrieNodeDecoder.decodeNodes(parentNode.getLocation()
                 .orElseThrow(), parentNode.getRlp());
         nodes.forEach(node -> {
@@ -156,6 +157,16 @@ class BonsaiTraversal {
             }
         });
 
+    }
+
+    void printVisited(){
+        if (getVisited() % 1000 ==0){
+            System.out.print(".");
+        }
+        if (getVisited() % 100000 ==0){
+            System.out.println();
+            System.out.println("So far processed "+getVisited()+" nodes");
+        }
     }
 
 
