@@ -15,7 +15,7 @@
  *
  */
 
-package org.hyperledger.besu.util;
+package org.hyperledger.besu.ethereum.eth;
 
 import javax.annotation.Nullable;
 import java.nio.file.Path;
