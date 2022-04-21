@@ -113,6 +113,7 @@ class BonsaiTraversal {
         final Hash x = trieBranchStorage.get(Bytes.EMPTY.toArrayUnsafe()).map(Bytes::wrap).map(Hash::hash)
                 .orElseThrow();
         root = getAccountNodeValue(x, Bytes.EMPTY);
+        System.out.println("Working with root " + root.getHash());
         traverseAccountTrie(root);
     }
 
