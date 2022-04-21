@@ -23,12 +23,16 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.hyperledger.besu.ethereum.storage.StorageProvider;
 import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier;
@@ -36,10 +40,14 @@ import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueStorageProviderBui
 import org.hyperledger.besu.ethereum.trie.CompactEncoding;
 import org.hyperledger.besu.ethereum.trie.MerklePatriciaTrie;
 import org.hyperledger.besu.ethereum.trie.Node;
+import org.hyperledger.besu.ethereum.trie.NodeUpdater;
+import org.hyperledger.besu.ethereum.trie.StoredMerklePatriciaTrie;
+import org.hyperledger.besu.ethereum.trie.StoredNodeFactory;
 import org.hyperledger.besu.ethereum.trie.TrieNodeDecoder;
 import org.hyperledger.besu.ethereum.worldstate.StateTrieAccountValue;
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem;
 import org.hyperledger.besu.plugin.services.storage.KeyValueStorage;
+import org.hyperledger.besu.plugin.services.storage.KeyValueStorageTransaction;
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBKeyValueStorageFactory;
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBMetricsFactory;
 import org.hyperledger.besu.plugin.services.storage.rocksdb.configuration.RocksDBFactoryConfiguration;
@@ -113,9 +121,35 @@ class BonsaiTraversal {
         final Hash x = trieBranchStorage.get(Bytes.EMPTY.toArrayUnsafe()).map(Bytes::wrap).map(Hash::hash)
                 .orElseThrow();
         root = getAccountNodeValue(x, Bytes.EMPTY);
-        System.out.println("Working with root " + root.getHash());
+//        breakTree(x);
+        System.err.println("Working with root " + root.getHash());
         traverseAccountTrie(root);
     }
+
+/*    private void breakTree(final Hash x) {
+        MerklePatriciaTrie<Bytes,Bytes> trie =  new StoredMerklePatriciaTrie<>(
+                new StoredNodeFactory<>(
+                        (location, hash) -> Optional.ofNullable(getAccountNodeValue(hash, location).getRlp()), Function.identity(), Function.identity()),
+                x);
+        trie.entriesFrom(Bytes32.ZERO, 1).entrySet().stream().findFirst().ifPresent(
+                account -> {
+                    final StateTrieAccountValue accountValue = StateTrieAccountValue.readFrom(RLP.input(account.getValue()));
+                    final StateTrieAccountValue updatedAccountValue
+                            = new StateTrieAccountValue(accountValue.getNonce(), accountValue.getBalance().add(Wei.ONE), accountValue.getStorageRoot(), accountValue.getCodeHash());
+                    final Bytes dataToSave = RLP.encode(updatedAccountValue::writeTo);
+                    trie.put(account.getKey(), dataToSave);
+                    final KeyValueStorageTransaction transaction = trieBranchStorage.startTransaction();
+                    final AtomicInteger countNode = new AtomicInteger();
+                    trie.commit((location, hash, value) -> {
+                        if(countNode.getAndIncrement()==0){
+                            System.out.println("Updated account node "+account.getKey()+" with "+value);
+                            transaction.put(location.toArrayUnsafe(), dataToSave.toArrayUnsafe());
+                        }
+                    });
+                    transaction.commit();
+                }
+        );
+    }*/
 
     public void traverseAccountTrie(final Node<Bytes> parentNode) {
         if (parentNode == null) {
