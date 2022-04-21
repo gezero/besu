@@ -158,10 +158,10 @@ class BonsaiTraversal {
 
     void printVisited(final String s){
         visited++;
-        if (getVisited() % 1000 ==0){
+        if (getVisited() % 10000 ==0){
             System.out.print(s);
         }
-        if (getVisited() % 100000 ==0){
+        if (getVisited() % 1000000 ==0){
             System.out.println();
             System.out.println("So far processed "+getVisited()+" nodes");
         }
