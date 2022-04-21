@@ -86,7 +86,7 @@ public class BonsaiTreeVerifier {
 
 class BonsaiTraversal {
 
-    Set<Bytes> visited = new HashSet<>();
+    int visited =0;
 
     //    private final KeyValueStorage accountStorage;
     private final KeyValueStorage codeStorage;
@@ -119,11 +119,7 @@ class BonsaiTraversal {
     public void traverseAccountTrie(final Node<Bytes> parentNode) {
         if (parentNode == null) {
             return;
-        }
-        if (visited.contains(parentNode.getHash())) {
-            throw new RuntimeException("We have been here already!!!");
-        }
-        visited.add(parentNode.getHash());
+        };
         printVisited("@");
         final List<Node<Bytes>> nodes = TrieNodeDecoder.decodeNodes(parentNode.getLocation()
                 .orElseThrow(), parentNode.getRlp());
@@ -160,6 +156,7 @@ class BonsaiTraversal {
     }
 
     void printVisited(final String s){
+        visited++;
         if (getVisited() % 1000 ==0){
             System.out.print(s);
         }
@@ -174,11 +171,6 @@ class BonsaiTraversal {
         if (parentNode == null) {
             return;
         }
-        final Bytes nodeId = Bytes.concatenate(accountHash, parentNode.getHash());
-        if (visited.contains(nodeId)) {
-            throw new RuntimeException("We have been here already!!!");
-        }
-        visited.add(nodeId);
         printVisited("#");
         final List<Node<Bytes>> nodes = TrieNodeDecoder.decodeNodes(parentNode.getLocation()
                 .orElseThrow(), parentNode.getRlp());
@@ -227,7 +219,7 @@ class BonsaiTraversal {
 
 
     public int getVisited() {
-        return visited.size();
+        return visited;
     }
 
     public String getRoot() {
