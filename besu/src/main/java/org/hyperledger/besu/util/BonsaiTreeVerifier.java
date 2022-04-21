@@ -124,7 +124,7 @@ class BonsaiTraversal {
             throw new RuntimeException("We have been here already!!!");
         }
         visited.add(parentNode.getHash());
-        printVisited();
+        printVisited("@");
         final List<Node<Bytes>> nodes = TrieNodeDecoder.decodeNodes(parentNode.getLocation()
                 .orElseThrow(), parentNode.getRlp());
         nodes.forEach(node -> {
@@ -141,11 +141,11 @@ class BonsaiTraversal {
                         // traverse code
                         final Optional<Bytes> code = codeStorage.get(accountHash.toArrayUnsafe()).map(Bytes::wrap);
                         if (code.isEmpty()) {
-                            System.out.format("missing code hash %s for account %s", accountValue.getCodeHash(), accountHash);
+                            System.err.format("missing code hash %s for account %s", accountValue.getCodeHash(), accountHash);
                         } else {
                             final Hash foundCodeHash = Hash.hash(code.orElseThrow());
                             if (!foundCodeHash.equals(accountValue.getCodeHash())) {
-                                System.out.format("invalid code for account %s (expected %s and found %s)", accountHash, accountValue.getCodeHash(), foundCodeHash);
+                                System.err.format("invalid code for account %s (expected %s and found %s)", accountHash, accountValue.getCodeHash(), foundCodeHash);
                             }
                         }
                     }
@@ -159,9 +159,9 @@ class BonsaiTraversal {
 
     }
 
-    void printVisited(){
+    void printVisited(final String s){
         if (getVisited() % 1000 ==0){
-            System.out.print(".");
+            System.out.print(s);
         }
         if (getVisited() % 100000 ==0){
             System.out.println();
@@ -179,6 +179,7 @@ class BonsaiTraversal {
             throw new RuntimeException("We have been here already!!!");
         }
         visited.add(nodeId);
+        printVisited("#");
         final List<Node<Bytes>> nodes = TrieNodeDecoder.decodeNodes(parentNode.getLocation()
                 .orElseThrow(), parentNode.getRlp());
         nodes.forEach(node -> {
@@ -193,12 +194,12 @@ class BonsaiTraversal {
     private Node<Bytes> getAccountNodeValue(final Bytes32 hash, final Bytes location) {
         final Optional<Bytes> bytes = trieBranchStorage.get(location.toArrayUnsafe()).map(Bytes::wrap);
         if (bytes.isEmpty()) {
-            System.out.format("missing account trie node for hash %s and location %s", hash, location);
+            System.err.format("missing account trie node for hash %s and location %s", hash, location);
             return null;
         }
         final Hash foundHashNode = Hash.hash(bytes.orElseThrow());
         if (!foundHashNode.equals(hash)) {
-            System.out.format("invalid account trie node for hash %s and location %s (found %s)", hash, location, foundHashNode);
+            System.err.format("invalid account trie node for hash %s and location %s (found %s)", hash, location, foundHashNode);
             return null;
         }
         return TrieNodeDecoder.decode(location, bytes.get());
@@ -208,12 +209,12 @@ class BonsaiTraversal {
         final Optional<Bytes> bytes = trieBranchStorage.get(Bytes.concatenate(accountHash, location)
                 .toArrayUnsafe()).map(Bytes::wrap);
         if (bytes.isEmpty()) {
-            System.out.format("missing storage trie node for hash %s and location %s", hash, location);
+            System.err.format("missing storage trie node for hash %s and location %s", hash, location);
             return null;
         }
         final Hash foundHashNode = Hash.hash(bytes.orElseThrow());
         if (!foundHashNode.equals(hash)) {
-            System.out.format("invalid storage trie node for hash %s and location %s (found %s)", hash, location, foundHashNode);
+            System.err.format("invalid storage trie node for hash %s and location %s (found %s)", hash, location, foundHashNode);
             return null;
         }
         return TrieNodeDecoder.decode(location, bytes.get());
