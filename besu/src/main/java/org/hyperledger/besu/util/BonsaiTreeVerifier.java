@@ -21,18 +21,12 @@ import javax.annotation.Nullable;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.hyperledger.besu.ethereum.storage.StorageProvider;
 import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier;
@@ -40,14 +34,10 @@ import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueStorageProviderBui
 import org.hyperledger.besu.ethereum.trie.CompactEncoding;
 import org.hyperledger.besu.ethereum.trie.MerklePatriciaTrie;
 import org.hyperledger.besu.ethereum.trie.Node;
-import org.hyperledger.besu.ethereum.trie.NodeUpdater;
-import org.hyperledger.besu.ethereum.trie.StoredMerklePatriciaTrie;
-import org.hyperledger.besu.ethereum.trie.StoredNodeFactory;
 import org.hyperledger.besu.ethereum.trie.TrieNodeDecoder;
 import org.hyperledger.besu.ethereum.worldstate.StateTrieAccountValue;
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem;
 import org.hyperledger.besu.plugin.services.storage.KeyValueStorage;
-import org.hyperledger.besu.plugin.services.storage.KeyValueStorageTransaction;
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBKeyValueStorageFactory;
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBMetricsFactory;
 import org.hyperledger.besu.plugin.services.storage.rocksdb.configuration.RocksDBFactoryConfiguration;
@@ -62,7 +52,7 @@ public class BonsaiTreeVerifier {
 
     public static void main(final String[] args) {
         final Path dataDir = Paths.get(args[0]);
-        System.out.println("We are veryfying : "+dataDir);
+        System.out.println("We are verifying : " + dataDir);
         final StorageProvider provider = createKeyValueStorageProvider(dataDir, dataDir.resolve("database"));
         BonsaiTraversal tr = new BonsaiTraversal(provider);
         System.out.println();
@@ -73,9 +63,9 @@ public class BonsaiTreeVerifier {
         try {
             tr.traverse();
             System.out.println("ޏ₍ ὸ.ό₎ރ World state was verified... ޏ₍ ὸ.ό₎ރ");
-            System.out.println("Verified root "+ tr.getRoot()+ " with "+tr.getVisited()+" nodes");
+            System.out.println("Verified root " + tr.getRoot() + " with " + tr.getVisited() + " nodes");
         } catch (Exception e) {
-            System.out.println("There was a problem (╯°□°)╯︵ ┻━┻: "+ e.getMessage());
+            System.out.println("There was a problem (╯°□°)╯︵ ┻━┻: " + e.getMessage());
             e.printStackTrace();
         }
 
@@ -94,7 +84,7 @@ public class BonsaiTreeVerifier {
 
 class BonsaiTraversal {
 
-    int visited =0;
+    int visited = 0;
 
     //    private final KeyValueStorage accountStorage;
     private final KeyValueStorage codeStorage;
@@ -154,7 +144,7 @@ class BonsaiTraversal {
     public void traverseAccountTrie(final Node<Bytes> parentNode) {
         if (parentNode == null) {
             return;
-        };
+        }
         printVisited("@");
         final List<Node<Bytes>> nodes = TrieNodeDecoder.decodeNodes(parentNode.getLocation()
                 .orElseThrow(), parentNode.getRlp());
@@ -184,20 +174,22 @@ class BonsaiTraversal {
                     if (!accountValue.getStorageRoot().equals(MerklePatriciaTrie.EMPTY_TRIE_NODE_HASH)) {
                         traverseStorageTrie(accountHash, getStorageNodeValue(accountValue.getStorageRoot(), accountHash, Bytes.EMPTY));
                     }
+                } else {
+                    System.err.println("\nMissing value for node " + node.getHash().toHexString());
                 }
             }
         });
 
     }
 
-    void printVisited(final String s){
+    void printVisited(final String s) {
         visited++;
-        if (getVisited() % 10000 ==0){
+        if (getVisited() % 10000 == 0) {
             System.out.print(s);
         }
-        if (getVisited() % 1000000 ==0){
+        if (getVisited() % 1000000 == 0) {
             System.out.println();
-            System.out.println("So far processed "+getVisited()+" nodes");
+            System.out.println("So far processed " + getVisited() + " nodes");
         }
     }
 
