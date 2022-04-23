@@ -15,6 +15,7 @@ dependencies {
   implementation project(':ethereum:trie')
   implementation project(':datatypes')
   implementation project(':ethereum:rlp')
+  implementation project(':evm')
   implementation 'com.googlecode.lanterna:lanterna:3.1.1'
 }
 
