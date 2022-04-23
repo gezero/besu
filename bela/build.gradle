@@ -1,0 +1,19 @@
+
+
+plugins {
+  id 'application'
+}
+
+
+description("BEsu LAterna commandline interrogation tool")
+
+dependencies {
+  implementation 'com.googlecode.lanterna:lanterna:3.1.1'
+}
+
+
+
+
+application {
+  mainClass = "org.hyperledger.bela.Bela"
+}
