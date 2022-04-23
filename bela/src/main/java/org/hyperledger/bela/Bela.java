@@ -17,19 +17,13 @@
 
 package org.hyperledger.bela;
 
-import java.util.regex.Pattern;
+import org.hyperledger.bela.components.SearchForBlockPanel;
 
-import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.TextColor;
 import com.googlecode.lanterna.gui2.BasicWindow;
-import com.googlecode.lanterna.gui2.Button;
 import com.googlecode.lanterna.gui2.DefaultWindowManager;
 import com.googlecode.lanterna.gui2.EmptySpace;
-import com.googlecode.lanterna.gui2.GridLayout;
-import com.googlecode.lanterna.gui2.Label;
 import com.googlecode.lanterna.gui2.MultiWindowTextGUI;
-import com.googlecode.lanterna.gui2.Panel;
-import com.googlecode.lanterna.gui2.TextBox;
 import com.googlecode.lanterna.screen.Screen;
 import com.googlecode.lanterna.screen.TerminalScreen;
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
@@ -40,32 +34,11 @@ public class Bela {
     try (Terminal terminal = new DefaultTerminalFactory().createTerminal()) {
       Screen screen = new TerminalScreen(terminal);
       screen.startScreen();
-      Panel panel = new Panel();
-      panel.setLayoutManager(new GridLayout(2));
-
-      final Label blkLbl = new Label("");
-
-      panel.addComponent(new Label("Block Number"));
-      final TextBox blockNmr =
-          new TextBox().setValidationPattern(Pattern.compile("[0-9]*")).addTo(panel);
-
-      new Button(
-              "Search!",
-              new Runnable() {
-                @Override
-                public void run() {
-                  int blockNumber = Integer.parseInt(blockNmr.getText());
-                  blkLbl.setText(Integer.toString(blockNumber));
-                }
-              })
-          .addTo(panel);
-
-      panel.addComponent(new EmptySpace(new TerminalSize(0, 0)));
-      panel.addComponent(blkLbl);
+      SearchForBlockPanel searchPanel = new SearchForBlockPanel();
 
       // Create window to hold the panel
       BasicWindow window = new BasicWindow();
-      window.setComponent(panel);
+      window.setComponent(searchPanel.createComponent());
 
       // Create gui and start gui
       MultiWindowTextGUI gui =
