@@ -8,6 +8,13 @@ plugins {
 description("BEsu LAterna commandline interrogation tool")
 
 dependencies {
+  implementation project(':ethereum:core')
+  implementation project(':plugins:rocksdb')
+  implementation project(':besu')
+  implementation project(':metrics:core')
+  implementation project(':ethereum:trie')
+  implementation project(':datatypes')
+  implementation project(':ethereum:rlp')
   implementation 'com.googlecode.lanterna:lanterna:3.1.1'
 }
 

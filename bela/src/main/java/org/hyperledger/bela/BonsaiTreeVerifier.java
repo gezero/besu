@@ -15,7 +15,7 @@
  *
  */
 
-package org.hyperledger.besu.util;
+package org.hyperledger.bela;
 
 import javax.annotation.Nullable;
 import java.nio.file.Path;
@@ -40,6 +40,7 @@ import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem;
 import org.hyperledger.besu.plugin.services.storage.KeyValueStorage;
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBKeyValueStorageFactory;
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBMetricsFactory;
+import org.hyperledger.besu.plugin.services.storage.rocksdb.configuration.RocksDBCLIOptions;
 import org.hyperledger.besu.plugin.services.storage.rocksdb.configuration.RocksDBFactoryConfiguration;
 import org.hyperledger.besu.services.BesuConfigurationImpl;
 
@@ -75,7 +76,7 @@ public class BonsaiTreeVerifier {
     }
 
     private static StorageProvider createKeyValueStorageProvider(final Path dataDir, final Path dbDir) {
-        return new KeyValueStorageProviderBuilder().withStorageFactory(new RocksDBKeyValueStorageFactory(() -> new RocksDBFactoryConfiguration(DEFAULT_MAX_OPEN_FILES, DEFAULT_MAX_BACKGROUND_COMPACTIONS, DEFAULT_BACKGROUND_THREAD_COUNT, DEFAULT_CACHE_CAPACITY), Arrays.asList(KeyValueSegmentIdentifier.values()), RocksDBMetricsFactory.PUBLIC_ROCKS_DB_METRICS))
+        return new KeyValueStorageProviderBuilder().withStorageFactory(new RocksDBKeyValueStorageFactory(() -> new RocksDBFactoryConfiguration(RocksDBCLIOptions.DEFAULT_MAX_OPEN_FILES, RocksDBCLIOptions.DEFAULT_MAX_BACKGROUND_COMPACTIONS, RocksDBCLIOptions.DEFAULT_BACKGROUND_THREAD_COUNT, RocksDBCLIOptions.DEFAULT_CACHE_CAPACITY), Arrays.asList(KeyValueSegmentIdentifier.values()), RocksDBMetricsFactory.PUBLIC_ROCKS_DB_METRICS))
                 .withCommonConfiguration(new BesuConfigurationImpl(dataDir, dbDir))
                 .withMetricsSystem(new NoOpMetricsSystem()).build();
     }
