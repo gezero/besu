@@ -181,6 +181,11 @@ public class TransitionCoordinator extends TransitionUtils<MiningCoordinator>
   }
 
   @Override
+  public boolean isBadBlock(final BlockHeader blockHeader) {
+    return mergeCoordinator.isBadBlock(blockHeader);
+  }
+
+  @Override
   public boolean isMiningBeforeMerge() {
     return mergeCoordinator.isMiningBeforeMerge();
   }

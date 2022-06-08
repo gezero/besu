@@ -237,6 +237,12 @@ public class MergeCoordinator implements MergeMiningCoordinator {
   }
 
   @Override
+  public boolean isBadBlock(final BlockHeader blockHeader) {
+    return protocolSchedule.getByBlockNumber(blockHeader.getNumber()).getBadBlocksManager()
+            .getBadBlock(blockHeader.getHash()).isPresent();
+  }
+
+  @Override
   public Result executeBlock(final Block block) {
 
     final var chain = protocolContext.getBlockchain();
@@ -442,6 +448,7 @@ public class MergeCoordinator implements MergeMiningCoordinator {
 
   @Override
   public CompletableFuture<Void> appendNewPayloadToSync(final Block newPayload) {
+
     return backwardSyncContext.syncBackwardsUntil(newPayload);
   }
 

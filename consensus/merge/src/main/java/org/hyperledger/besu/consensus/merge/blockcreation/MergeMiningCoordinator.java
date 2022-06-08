@@ -56,6 +56,8 @@ public interface MergeMiningCoordinator extends MiningCoordinator {
 
   Optional<BlockHeader> getOrSyncHeaderByHash(Hash blockHash, Hash finalizedBlockHash);
 
+  boolean isBadBlock(BlockHeader blockHeader);
+
   class ForkchoiceResult {
     private final Optional<String> errorMessage;
     private final Optional<BlockHeader> newFinalized;
