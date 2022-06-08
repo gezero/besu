@@ -249,13 +249,15 @@ public class BackwardSyncContext {
                 block,
                 HeaderValidationMode.FULL,
                 HeaderValidationMode.NONE);
-    optResult.blockProcessingOutputs.ifPresent(
-        result -> {
-          traceLambda(LOG, "Block {} was validated, going to import it", block::toLogString);
-          result.worldState.persist(block.getHeader());
-          this.getProtocolContext().getBlockchain().appendBlock(block, result.receipts);
-          possiblyMoveHead(block);
-        });
+    if (optResult.blockProcessingOutputs.isPresent()){
+      traceLambda(LOG, "Block {} was validated, going to import it", block::toLogString);
+      optResult.blockProcessingOutputs.get().worldState.persist(block.getHeader());
+      this.getProtocolContext().getBlockchain().appendBlock(block, optResult.blockProcessingOutputs.get().receipts);
+      possiblyMoveHead(block);
+    } else {
+      LOG.warn("Block {} did not pass validation  ({}), adding it to bad blocks", block.toLogString(),optResult.errorMessage.orElse(""));
+      protocolSchedule.getByBlockNumber(block.getHeader().getNumber()).getBadBlocksManager().addBadBlock(block);
+    }
     return null;
   }
 
