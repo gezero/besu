@@ -57,7 +57,7 @@ public class ForwardSyncStep {
     } else {
       final List<BlockHeader> unknownBlocks =
           blockHeaders.stream()
-              .filter(blockHeader -> context.getBackwardChain().isTrusted(blockHeader.getHash()))
+              .filter(blockHeader -> !context.getBackwardChain().isTrusted(blockHeader.getHash()))
               .collect(Collectors.toList());
       CompletableFuture<Void> voidCompletableFuture = CompletableFuture.completedFuture(null);
 
