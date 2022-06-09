@@ -108,7 +108,10 @@ public class BackwardsSyncAlgorithm {
 
   @VisibleForTesting
   protected CompletableFuture<Void> executeForwardAsync() {
-    return new ForwardSyncStep(context, context.getBackwardChain()).executeAsync();
+    LOG.warn("AAA");
+    final ForwardSyncStep forwardSyncStep = new ForwardSyncStep(context, context.getBackwardChain());
+    LOG.warn("BBB");
+    return forwardSyncStep.executeAsync();
   }
 
   @VisibleForTesting

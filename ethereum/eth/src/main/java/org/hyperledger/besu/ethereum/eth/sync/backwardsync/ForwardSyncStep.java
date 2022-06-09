@@ -44,6 +44,7 @@ public class ForwardSyncStep {
   }
 
   public CompletableFuture<Void> executeAsync() {
+    LOG.warn("CCC");
     return CompletableFuture.supplyAsync(
             () -> backwardChain.getFirstNAncestorHeaders(context.getBatchSize()))
         .thenCompose(this::possibleRequestBodies);
