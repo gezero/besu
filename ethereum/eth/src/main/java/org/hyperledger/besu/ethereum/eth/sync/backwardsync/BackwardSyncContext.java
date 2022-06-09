@@ -101,9 +101,9 @@ public class BackwardSyncContext {
           LOG,
           "not fetching or appending hash {} to backwards sync since it is present in successors",
           newBlockHash::toHexString);
-      return future;
+    } else{
+      backwardChain.addNewHash(newBlockHash);
     }
-    backwardChain.addNewHash(newBlockHash);
     if (future != null) {
       return future;
     }
