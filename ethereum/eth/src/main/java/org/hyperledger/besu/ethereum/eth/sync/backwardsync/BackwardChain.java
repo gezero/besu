@@ -188,4 +188,8 @@ public class BackwardChain {
   public synchronized Optional<Hash> getFirstHashToAppend() {
     return Optional.ofNullable(hashesToAppend.poll());
   }
+
+  public void saveTrustedBlockForLater(final Block block) {
+    this.blocks.put(block.getHash(), block);
+  }
 }

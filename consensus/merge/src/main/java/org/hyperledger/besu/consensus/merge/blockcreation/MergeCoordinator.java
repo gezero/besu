@@ -14,15 +14,9 @@
  */
 package org.hyperledger.besu.consensus.merge.blockcreation;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
+import static org.hyperledger.besu.consensus.merge.TransitionUtils.isTerminalProofOfWorkBlock;
+import static org.hyperledger.besu.util.Slf4jLambdaHelper.debugLambda;
+
 import org.hyperledger.besu.consensus.merge.MergeContext;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
@@ -42,11 +36,19 @@ import org.hyperledger.besu.ethereum.eth.transactions.sorter.AbstractPendingTran
 import org.hyperledger.besu.ethereum.mainnet.AbstractGasLimitSpecification;
 import org.hyperledger.besu.ethereum.mainnet.HeaderValidationMode;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSchedule;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.hyperledger.besu.consensus.merge.TransitionUtils.isTerminalProofOfWorkBlock;
-import static org.hyperledger.besu.util.Slf4jLambdaHelper.debugLambda;
 
 public class MergeCoordinator implements MergeMiningCoordinator {
   private static final Logger LOG = LoggerFactory.getLogger(MergeCoordinator.class);
@@ -219,41 +221,48 @@ public class MergeCoordinator implements MergeMiningCoordinator {
 
   @Override
   public Result executeBlock(final Block block) {
-    return  executeBlockWithoutSaving(block,true);
+    return executeBlock(block, true);
   }
 
   @Override
-  public Result executeBlockWithoutSaving(final Block block) {
-    return executeBlockWithoutSaving(block,false);
+  public Result executeBlockWithoutChainUpdate(final Block block) {
+    return executeBlock(block, false);
   }
-  public Result executeBlockWithoutSaving(final Block block, final boolean shouldSave) {
+
+  public Result executeBlock(final Block block, final boolean updateChainHead) {
 
     final var chain = protocolContext.getBlockchain();
     chain
-            .getBlockHeader(block.getHeader().getParentHash())
-            .ifPresentOrElse(
-                    blockHeader ->
-                            debugLambda(LOG, "Parent of block {} is already present", block::toLogString),
-                    () -> backwardSyncContext.syncBackwardsUntil(block));
+        .getBlockHeader(block.getHeader().getParentHash())
+        .ifPresentOrElse(
+            blockHeader ->
+                debugLambda(LOG, "Parent of block {} is already present", block::toLogString),
+            () -> backwardSyncContext.syncBackwardsUntil(block));
 
     final var validationResult =
-            protocolSchedule
-                    .getByBlockNumber(block.getHeader().getNumber())
-                    .getBlockValidator()
-                    .validateAndProcessBlock(
-                            protocolContext, block, HeaderValidationMode.FULL, HeaderValidationMode.NONE,shouldSave);
+        protocolSchedule
+            .getByBlockNumber(block.getHeader().getNumber())
+            .getBlockValidator()
+            .validateAndProcessBlock(
+                protocolContext,
+                block,
+                HeaderValidationMode.FULL,
+                HeaderValidationMode.NONE,
+                updateChainHead);
 
     validationResult.blockProcessingOutputs.ifPresentOrElse(
-            result -> {
-              if (shouldSave) {
-                chain.appendBlock(block, result.receipts);
-              }
-            },
-            () ->
-                    protocolSchedule
-                            .getByBlockNumber(chain.getChainHeadBlockNumber())
-                            .getBadBlocksManager()
-                            .addBadBlock(block));
+        result -> {
+          if (updateChainHead) {
+            chain.appendBlock(block, result.receipts);
+          } else {
+            backwardSyncContext.getBackwardChain().saveTrustedBlockForLater(block);
+          }
+        },
+        () ->
+            protocolSchedule
+                .getByBlockNumber(chain.getChainHeadBlockNumber())
+                .getBadBlocksManager()
+                .addBadBlock(block));
 
     return validationResult;
   }

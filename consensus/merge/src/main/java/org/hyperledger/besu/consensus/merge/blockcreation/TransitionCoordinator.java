@@ -138,8 +138,8 @@ public class TransitionCoordinator extends TransitionUtils<MiningCoordinator>
   }
 
   @Override
-  public Result executeBlockWithoutSaving(final Block block) {
-    return mergeCoordinator.executeBlockWithoutSaving(block);
+  public Result executeBlockWithoutChainUpdate(final Block block) {
+    return mergeCoordinator.executeBlockWithoutChainUpdate(block);
   }
 
   @Override

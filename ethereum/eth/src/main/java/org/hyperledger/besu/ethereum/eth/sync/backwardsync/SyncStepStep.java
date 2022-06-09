@@ -43,8 +43,15 @@ public class SyncStepStep {
 
   public CompletableFuture<Void> executeAsync(final Hash hash) {
     return CompletableFuture.supplyAsync(() -> hash)
-        .thenCompose(this::requestBlock)
+        .thenCompose(this::possibleRequestBlock)
         .thenApply(this::saveBlock);
+  }
+
+  private CompletableFuture<Block> possibleRequestBlock(final Hash hash) {
+    if (context.getBackwardChain().isTrusted(hash)) {
+      return CompletableFuture.completedFuture(context.getBackwardChain().getTrustedBlock(hash));
+    }
+    return requestBlock(hash);
   }
 
   private CompletableFuture<Block> requestBlock(final Hash targetHash) {
