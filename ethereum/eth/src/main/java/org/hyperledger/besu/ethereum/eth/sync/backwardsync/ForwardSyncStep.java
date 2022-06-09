@@ -26,6 +26,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
@@ -53,15 +54,29 @@ public class ForwardSyncStep {
     if (blockHeaders.isEmpty()) {
       return CompletableFuture.completedFuture(null);
     } else {
-      debugLambda(
-          LOG,
-          "Requesting {} blocks {}->{} ({})",
-          blockHeaders::size,
-          () -> blockHeaders.get(0).getNumber(),
-          () -> blockHeaders.get(blockHeaders.size() - 1).getNumber(),
-          () -> blockHeaders.get(0).getHash().toHexString());
-      return requestBodies(blockHeaders).thenApply(this::saveBlocks);
+      final List<BlockHeader> unknownBlocks =
+          blockHeaders.stream()
+              .filter(blockHeader -> context.getBackwardChain().isTrusted(blockHeader.getHash()))
+              .collect(Collectors.toList());
+      CompletableFuture<Void> voidCompletableFuture = CompletableFuture.completedFuture(null);
+
+      if (!unknownBlocks.isEmpty()) {
+        debugLambda(
+            LOG,
+            "Requesting {} blocks {}->{} ({})",
+            unknownBlocks::size,
+            () -> blockHeaders.get(0).getNumber(),
+            () -> blockHeaders.get(blockHeaders.size() - 1).getNumber(),
+            () -> blockHeaders.get(0).getHash().toHexString());
+        voidCompletableFuture = requestBodies(unknownBlocks).thenApply(this::addTrustedBlocks);
+      }
+      return voidCompletableFuture.thenRun(() -> saveBlocks(blockHeaders));
     }
+  }
+
+  private Void addTrustedBlocks(final List<Block> blocks) {
+    blocks.forEach(block -> context.getBackwardChain().saveTrustedBlockForLater(block));
+    return null;
   }
 
   @VisibleForTesting
@@ -84,33 +99,34 @@ public class ForwardSyncStep {
   }
 
   @VisibleForTesting
-  protected Void saveBlocks(final List<Block> blocks) {
-    if (blocks.isEmpty()) {
+  protected Void saveBlocks(final List<BlockHeader> blockHeaders) {
+    if (blockHeaders.isEmpty()) {
       LOG.info("No blocks to save...");
       context.halveBatchSize();
       return null;
     }
 
-    for (Block block : blocks) {
+    for (BlockHeader blockHeader : blockHeaders) {
       final Optional<Block> parent =
-          context
-              .getProtocolContext()
-              .getBlockchain()
-              .getBlockByHash(block.getHeader().getParentHash());
+          context.getProtocolContext().getBlockchain().getBlockByHash(blockHeader.getParentHash());
       if (parent.isEmpty()) {
         context.halveBatchSize();
         return null;
       } else {
-        context.saveBlock(block);
+        context.saveBlock(context.getBackwardChain().getTrustedBlock(blockHeader.getHash()));
       }
     }
     infoLambda(
         LOG,
         "Saved blocks {} -> {} (target: {})",
-        () -> blocks.get(0).getHeader().getNumber(),
-        () -> blocks.get(blocks.size() - 1).getHeader().getNumber(),
+        () -> blockHeaders.get(0).getNumber(),
+        () -> blockHeaders.get(blockHeaders.size() - 1).getNumber(),
         () ->
-            backwardChain.getPivot().orElse(blocks.get(blocks.size() - 1)).getHeader().getNumber());
+            backwardChain
+                .getPivot()
+                .map(Block::getHeader)
+                .orElse(blockHeaders.get(blockHeaders.size() - 1))
+                .getNumber());
     context.resetBatchSize();
     return null;
   }
