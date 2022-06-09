@@ -96,14 +96,8 @@ public class BackwardSyncContext {
 
   public synchronized CompletableFuture<Void> syncBackwardsUntil(final Hash newBlockHash) {
     final CompletableFuture<Void> future = this.currentBackwardSyncFuture.get();
-    if (backwardChain.isTrusted(newBlockHash)) {
-      debugLambda(
-          LOG,
-          "not fetching or appending hash {} to backwards sync since it is present in successors",
-          newBlockHash::toHexString);
-    } else{
-      backwardChain.addNewHash(newBlockHash);
-    }
+
+    backwardChain.addNewHash(newBlockHash);
     if (future != null) {
       return future;
     }

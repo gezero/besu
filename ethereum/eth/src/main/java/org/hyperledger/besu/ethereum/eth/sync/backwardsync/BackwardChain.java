@@ -180,6 +180,10 @@ public class BackwardChain {
 
   public synchronized void addNewHash(final Hash newBlockHash) {
     if (hashesToAppend.contains(newBlockHash)) {
+      debugLambda(
+          LOG,
+          "not fetching or appending hash {} to backwards sync since it is present in successors",
+          newBlockHash::toHexString);
       return;
     }
     this.hashesToAppend.add(newBlockHash);
