@@ -193,7 +193,7 @@ public class BackwardChain {
     return Optional.ofNullable(hashesToAppend.poll());
   }
 
-  public void saveTrustedBlockForLater(final Block block) {
+  public synchronized void saveTrustedBlockForLater(final Block block) {
     this.blocks.put(block.getHash(), block);
   }
 }
