@@ -41,7 +41,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -214,7 +216,13 @@ public class MergeCoordinator implements MergeMiningCoordinator {
     } else {
       debugLambda(LOG, "appending block hash {} to backward sync", blockHash::toHexString);
       backwardSyncContext.updateHeads(blockHash, finalizedBlockHash);
-      backwardSyncContext.syncBackwardsUntil(blockHash);
+      final CompletableFuture<Void> voidCompletableFuture = backwardSyncContext.syncBackwardsUntil(blockHash);
+      try {
+        voidCompletableFuture.get(1, TimeUnit.SECONDS);
+        return chain.getBlockHeader(blockHash);
+      } catch (Exception e) {
+        return optHeader;
+      }
     }
     return optHeader;
   }
