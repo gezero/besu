@@ -22,6 +22,7 @@ import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.hyperledger.besu.ethereum.trie.CompactEncoding;
 import org.hyperledger.besu.ethereum.trie.MerklePatriciaTrie;
 import org.hyperledger.besu.ethereum.trie.StoredMerklePatriciaTrie;
+import org.hyperledger.besu.ethereum.trie.TrieNodeDecoder;
 import org.hyperledger.besu.ethereum.worldstate.StateTrieAccountValue;
 import org.hyperledger.besu.ethereum.worldstate.WorldStateStorage;
 
@@ -58,7 +59,7 @@ public class AccountTrieNodeDataRequest extends TrieNodeDataRequest {
       downloadState.setRootNodeData(data);
     }
     NodeDeletionProcessor deletion = new NodeDeletionProcessor(worldStateStorage, updater);
-    deletion.startFromAccountNode(getLocation(), getNodeHash(), data);
+    deletion.startFromAccountNode(getLocation(), getNodeHash(), TrieNodeDecoder.decode(getLocation(), data));
 
     updater.putAccountStateTrieNode(getLocation(), getNodeHash(), data);
     return 1;

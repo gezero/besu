@@ -19,6 +19,7 @@ import org.hyperledger.besu.ethereum.bonsai.BonsaiWorldStateKeyValueStorage;
 import org.hyperledger.besu.ethereum.eth.sync.snapsync.SnapSyncState;
 import org.hyperledger.besu.ethereum.eth.sync.snapsync.SnapWorldDownloadState;
 import org.hyperledger.besu.ethereum.trie.CompactEncoding;
+import org.hyperledger.besu.ethereum.trie.TrieNodeDecoder;
 import org.hyperledger.besu.ethereum.worldstate.WorldStateStorage;
 import org.hyperledger.besu.ethereum.worldstate.WorldStateStorage.Updater;
 
@@ -47,7 +48,7 @@ public class StorageTrieNodeDataRequest extends TrieNodeDataRequest {
       final SnapWorldDownloadState downloadState,
       final SnapSyncState snapSyncState) {
     NodeDeletionProcessor deletion = new NodeDeletionProcessor(worldStateStorage, updater);
-    deletion.startFromStorageNode(accountHash, getLocation(), getNodeHash(), data);
+    deletion.startFromStorageNode(accountHash, getLocation(), getNodeHash(), TrieNodeDecoder.decode(getLocation(), data));
     updater.putAccountStorageTrieNode(getAccountHash(), getLocation(), getNodeHash(), data);
     return 1;
   }
